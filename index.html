@@ -1,0 +1,42 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agent activity: where the research time goes</title>
+<style>
+:root{--ink:#0E0E10;--paper:#F5F3EE;--blue:#2563EB}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px Inter,system-ui,sans-serif}
+header{border-bottom:4px solid var(--ink);padding:20px 24px}h1{margin:0;font:800 clamp(24px,4vw,40px) "Plus Jakarta Sans",Inter,sans-serif;text-transform:uppercase}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 24px;border-bottom:4px solid var(--ink);font-family:"JetBrains Mono",monospace}
+button,select{font:700 14px "Plus Jakarta Sans",Inter,sans-serif;padding:8px 12px;border:3px solid var(--ink);background:#fff;box-shadow:3px 3px 0 var(--ink);cursor:pointer}
+button[aria-pressed=true]{background:var(--blue);color:#fff}
+canvas{display:block;width:100%;background:var(--ink)}#legend span{display:inline-block;margin-right:12px}#legend i{display:inline-block;width:12px;height:12px;margin-right:4px;border:2px solid var(--ink)}
+</style></head><body>
+<header><h1>Where does the research time go?</h1><p>Simulated agents hop between data sources while they work. Watch which departments pull from where, and follow one agent's path. All data is made up.</p></header>
+<div class="bar"><button id="labels" aria-pressed="true">Labels</button><button id="trails" aria-pressed="true">Trails</button>
+<label>Follow <select id="follow"><option value="">nobody</option></select></label><button id="pause" aria-pressed="false">Pause</button><span id="stats"></span></div>
+<canvas id="c" width="1000" height="640"></canvas><div class="bar" id="legend"></div>
+<script type="module">
+import { createWorld, step, DEPARTMENTS } from "./sim.js";
+const cv = document.getElementById("c"), g = cv.getContext("2d"), w = createWorld();
+const opt = { labels: true, trails: true, follow: "", paused: false };
+for (const a of w.agents) follow.add(new Option(`${a.id} (${a.dept})`, a.id));
+legend.innerHTML = Object.entries(DEPARTMENTS).map(([d, c]) => `<span><i style="background:${c}"></i>${d}</span>`).join("");
+const tog = (id, k) => document.getElementById(id).onclick = e => { opt[k] = !opt[k]; e.target.setAttribute("aria-pressed", opt[k]); };
+tog("labels", "labels"); tog("trails", "trails"); tog("pause", "paused");
+follow.onchange = e => opt.follow = e.target.value;
+cv.onclick = e => { const b = cv.getBoundingClientRect(), x = (e.clientX - b.left) * cv.width / b.width, y = (e.clientY - b.top) * cv.height / b.height;
+  const hit = w.agents.find(a => Math.hypot(a.x - x, a.y - y) < 12); opt.follow = hit ? hit.id : ""; follow.value = opt.follow; };
+let last = performance.now();
+function draw(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; if (!opt.paused) step(w, dt);
+  const f = w.agents.find(a => a.id === opt.follow), z = f ? 1.8 : 1;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = "#0E0E10"; g.fillRect(0, 0, cv.width, cv.height);
+  g.setTransform(z, 0, 0, z, f ? cv.width / 2 - f.x * z : 0, f ? cv.height / 2 - f.y * z : 0);
+  for (const c of w.clouds) { g.fillStyle = "#F5F3EE55"; for (const p of c.points) g.fillRect(p.x, p.y, 2, 2);
+    if (opt.labels) { g.fillStyle = "#F5F3EE"; g.font = "700 14px 'JetBrains Mono',monospace"; g.fillText(c.name.toUpperCase(), c.x - 36, c.y + 58); } }
+  for (const a of w.agents) { const col = DEPARTMENTS[a.dept], dim = f && f !== a;
+    if (opt.trails && a.trail.length > 1) { g.strokeStyle = col + (dim ? "33" : "AA"); g.lineWidth = 2; g.beginPath(); a.trail.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke(); }
+    g.fillStyle = dim ? col + "55" : col; g.fillRect(a.x - 5, a.y - 5, 10, 10); if (a === f) { g.strokeStyle = "#fff"; g.lineWidth = 2; g.strokeRect(a.x - 9, a.y - 9, 18, 18); }
+    if (opt.labels && (!f || a === f)) { g.fillStyle = "#fff"; g.font = "11px 'JetBrains Mono',monospace"; g.fillText(a.id, a.x + 8, a.y - 8); } }
+  stats.textContent = `t=${w.time.toFixed(0)}s hops=${w.hops}`; document.body.dataset.hops = w.hops; requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+</script></body></html>
