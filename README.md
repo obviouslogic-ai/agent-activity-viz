@@ -1,26 +1,41 @@
 # agent-activity-viz
 
-**The problem:** when software agents do research work across a business, nobody can see where the time goes, which department leans on which data, or whether one agent is going in circles.
+A live map of simulated agents moving between departments and the sources they read.
 
-This is a small, dependency-free canvas view of that: simulated agents jump between data "clouds" (Invoices, Contracts, Tickets, ...) with trails, colored by department. You can follow one agent and toggle labels. All data is simulated; nothing is connected to a real system.
+**This is a scripted demo.** It represents the governance process I use in Palladium, my own agent framework. It is not a sample or excerpt of that system, and no Palladium code or data is in it.
 
-## Run
+- Live page: https://demos.obviouslogic.ai/agent-activity-viz/
+- Source: https://github.com/obviouslogic-ai/agent-activity-viz
+
+## How it fits Palladium governance
+
+Palladium records what every agent reads and does, and I watch that as a live map. This repo acts that view out with a seeded simulation. Every agent, topic and number is invented.
+
+## Run the CLI
+
+```sh
+node -e 'import("./sim.js").then(m=>{const w=m.createWorld(1);m.step(w);console.log(w.agents.length,"agents")})'
 ```
-python3 -m http.server 8000   # then open http://localhost:8000
-```
-No build step, no network calls.
 
-## Controls
-- **Labels / Trails:** toggle on and off
-- **Follow:** pick an agent (or click one) to zoom in and track it; others dim
-- **Pause:** freeze the simulation
+Standard library only, no installs.
 
-## Test
+## Run the page locally
+
+```sh
+python3 -m http.server 8000   # from the folder that holds this repo
+# open http://localhost:8000/agent-activity-viz/web/
 ```
+
+Toggle labels and trails, follow one agent, or pause.
+
+The page imports this repo's own JS module, so what you click is the same code the tests cover. Styling comes from `web/kit/`, shared across all five demos.
+
+## Tests
+
+```sh
 node --test
 ```
-Covers determinism with a fixed seed, hopping between clouds, and capped trail length.
 
-## Files
-- `sim.js`: seeded simulation (pure functions, testable in Node)
-- `index.html`: canvas renderer and controls
+## License
+
+MIT
