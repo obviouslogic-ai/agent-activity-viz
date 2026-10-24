@@ -1,40 +1,51 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Agent activity · ObviousLogic demos</title><link rel="stylesheet" href="kit/kit.css">
-<style>canvas{display:block;width:100%;height:auto;background:var(--bg)}.ctl{display:flex;flex-wrap:wrap;align-items:center}
-#legend span{margin-right:28px}#legend i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:8px;vertical-align:middle}</style></head><body>
-<section class="screen in"><div class="tele" data-kit-tele></div>
-<h1>If you can't see the agents work, you can't govern them.</h1>
-<p class="lede">Palladium records what every agent reads and does, and I watch it as a live map: who is pulling from which source, by department, and who is going in circles. This page is a simulation of that view. Every agent, topic and number here is invented.</p>
-<p data-kit-note></p></section>
-<section class="screen"><div class="tele">SIMULATION / <b>T+<span id="stats">0</span></b></div>
-<div class="ctl tele"><button id="labels" aria-pressed="true">Labels</button><button id="trails" aria-pressed="true">Trails</button>
-<label>FOLLOW <select id="follow"><option value="">nobody</option></select></label><button id="pause" aria-pressed="false">Pause</button></div>
-<canvas id="c" width="1000" height="640"></canvas><div class="tele" id="legend" style="margin-top:16px"></div></section>
+<style>
+.work{display:grid;grid-template-columns:2fr 1fr;gap:3vw}.work>div{min-height:0;overflow:hidden}
+.cvw{display:grid;grid-template-rows:auto minmax(0,1fr) auto}
+canvas{display:block;width:100%;height:100%;object-fit:contain;object-position:left top}
+#legend span{margin-right:18px}#legend i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.bars div{display:grid;grid-template-columns:90px 1fr 34px;gap:8px;align-items:center;font:11px var(--mono);margin:5px 0}
+.bars b{display:block;height:4px;background:var(--fg);transition:width .3s;width:0}.bars .top b{background:var(--accent)}
+#feed{margin-top:14px}#feed div{font:11px/1.7 var(--mono);color:var(--dim);white-space:nowrap;overflow:hidden}#feed div:first-child{color:var(--fg)}
+</style></head><body class="stage">
+<main class="stage-main">
+<div><div class="tele" data-kit-tele></div><h1>If you can't see the agents work, you can't govern them</h1></div>
+<div class="work">
+ <div class="cvw"><div class="tele">SIMULATION / <b>T+<span id="stats">0</span></b></div><canvas id="c" width="1000" height="640"></canvas><div class="tele" id="legend"></div></div>
+ <div><div class="tele">READS BY SOURCE / <b id="phase">IDLE</b></div><div class="bars" id="bars"></div><div class="tele" style="margin-top:14px">LIVE FEED</div><div id="feed"></div></div>
+</div>
+<div class="act"><button class="big" id="go">Start the agents</button><span class="verdict" id="out"></span></div>
+</main>
+<template id="info"><p>Palladium records what every agent reads and does, and I watch it as a live map: who is pulling from which source, by department, and where the load lands.</p><p>This page is a simulation of that view. Every agent, topic and number here is invented. One run lasts 20 simulated seconds.</p></template>
 <script type="module">
-import { createWorld, step, DEPARTMENTS } from "../sim.js";
-import { mount } from "./kit/kit.js"; mount("agent-activity-viz", { status: "LIVE SIM" });
-const cv = document.getElementById("c"), g = cv.getContext("2d"), w = createWorld();
-const opt = { labels: true, trails: true, follow: "", paused: false };
-for (const a of w.agents) follow.add(new Option(`${a.id} (${a.dept})`, a.id));
-legend.innerHTML = Object.entries(DEPARTMENTS).map(([d, c]) => `<span><i style="background:${c}"></i>${d.toUpperCase()}</span>`).join("");
-const tog = (id, k) => document.getElementById(id).onclick = e => { opt[k] = !opt[k]; e.target.setAttribute("aria-pressed", opt[k]); };
-tog("labels", "labels"); tog("trails", "trails"); tog("pause", "paused");
-follow.onchange = e => opt.follow = e.target.value;
-cv.onclick = e => { const b = cv.getBoundingClientRect(), x = (e.clientX - b.left) * cv.width / b.width, y = (e.clientY - b.top) * cv.height / b.height;
-  const hit = w.agents.find(a => Math.hypot(a.x - x, a.y - y) < 12); opt.follow = hit ? hit.id : ""; follow.value = opt.follow; };
-let last = performance.now();
-function draw(now) {
-  const dt = Math.min(0.05, (now - last) / 1000); last = now; if (!opt.paused) step(w, dt);
-  const f = w.agents.find(a => a.id === opt.follow), z = f ? 1.8 : 1;
-  g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = "#07080A"; g.fillRect(0, 0, cv.width, cv.height);
-  g.setTransform(z, 0, 0, z, f ? cv.width / 2 - f.x * z : 0, f ? cv.height / 2 - f.y * z : 0);
-  for (const c of w.clouds) { g.fillStyle = "#F4F4F244"; for (const p of c.points) g.fillRect(p.x, p.y, 2, 2);
-    if (opt.labels) { g.fillStyle = "#8A8D93"; g.font = "11px ui-monospace,Menlo,monospace"; g.fillText(c.name.toUpperCase(), c.x - 36, c.y + 58); } }
-  for (const a of w.agents) { const col = DEPARTMENTS[a.dept], dim = f && f !== a;
-    if (opt.trails && a.trail.length > 1) { g.strokeStyle = col + (dim ? "33" : "AA"); g.lineWidth = 2; g.beginPath(); a.trail.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke(); }
-    g.fillStyle = dim ? col + "55" : col; g.fillRect(a.x - 5, a.y - 5, 10, 10); if (a === f) { g.strokeStyle = "#fff"; g.lineWidth = 2; g.strokeRect(a.x - 9, a.y - 9, 18, 18); }
-    if (opt.labels && (!f || a === f)) { g.fillStyle = "#fff"; g.font = "11px 'JetBrains Mono',monospace"; g.fillText(a.id, a.x + 8, a.y - 8); } }
-  stats.textContent = `${w.time.toFixed(1)}S  HOPS ${String(w.hops).padStart(4,'0')}`; document.body.dataset.hops = w.hops; requestAnimationFrame(draw);
+import { createWorld, step, DEPARTMENTS, TOPICS } from "../sim.js";
+import { mount, setStatus } from "./kit/kit.js"; mount("agent-activity-viz", { status: "READY" });
+const $ = id => document.getElementById(id), cv = $("c"), g = cv.getContext("2d"), FAST = new URLSearchParams(location.search).has("fast"), RUN = 20;
+$("legend").innerHTML = Object.entries(DEPARTMENTS).map(([d, c]) => `<span><i style="background:${c}"></i>${d.toUpperCase()}</span>`).join("");
+let w = createWorld(), reads, byDept, running = false, last;
+const bars = () => { const m = Math.max(1, ...reads), top = reads.indexOf(Math.max(...reads));
+  $("bars").innerHTML = TOPICS.map((t, i) => `<div class="${i === top && reads[i] ? "top" : ""}"><span>${t.toUpperCase()}</span><span><b style="width:${100 * reads[i] / m}%"></b></span><span>${reads[i]}</span></div>`).join(""); };
+function paint() {
+  g.fillStyle = "#07080A"; g.fillRect(0, 0, cv.width, cv.height);
+  for (const c of w.clouds) { g.fillStyle = "#F4F4F244"; for (const p of c.points) g.fillRect(p.x, p.y, 2, 2); g.fillStyle = "#8A8D93"; g.font = "13px ui-monospace,Menlo,monospace"; g.fillText(c.name.toUpperCase(), c.x - 36, c.y + 58); }
+  for (const a of w.agents) { const col = DEPARTMENTS[a.dept];
+    if (a.trail.length > 1) { g.strokeStyle = col + "AA"; g.lineWidth = 2; g.beginPath(); a.trail.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke(); }
+    g.fillStyle = col; g.fillRect(a.x - 5, a.y - 5, 10, 10); }
+  $("stats").textContent = `${w.time.toFixed(1)}S  HOPS ${String(w.hops).padStart(4, "0")}`; document.body.dataset.hops = w.hops;
 }
-requestAnimationFrame(draw);
+function tick(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  for (let k = 0; k < (FAST ? 12 : 1); k++) { const before = w.agents.map(a => a.hops); step(w, FAST ? 0.05 : dt);
+    w.agents.forEach((a, i) => { if (a.hops > before[i]) { reads[a.to]++; byDept[a.dept] = (byDept[a.dept] || 0) + 1;
+      const d = document.createElement("div"); d.textContent = `${w.time.toFixed(1)}s ${a.id} ${a.dept} → ${TOPICS[a.to]}`; $("feed").prepend(d); while ($("feed").children.length > 12) $("feed").lastChild.remove(); } }); }
+  paint(); bars();
+  if (w.time < RUN) return requestAnimationFrame(tick);
+  const top = TOPICS[reads.indexOf(Math.max(...reads))], dept = Object.entries(byDept).sort((a, b) => b[1] - a[1])[0][0];
+  $("phase").textContent = "DONE"; $("out").textContent = `${w.hops} reads in ${RUN}s. Busiest source ${top}. Most active ${dept}.`; $("out").className = "verdict okc";
+  setStatus("DONE"); $("go").textContent = "Replay"; $("go").disabled = false; running = false; document.body.dataset.done = "1";
+}
+$("go").onclick = () => { if (running) return; running = true; w = createWorld({ seed: 7 + Math.floor(Math.random() * 1000) }); reads = TOPICS.map(() => 0); byDept = {};
+  $("feed").innerHTML = ""; $("out").textContent = ""; delete document.body.dataset.done; $("go").disabled = true; setStatus("LIVE SIM"); $("phase").textContent = "RUNNING"; last = performance.now(); requestAnimationFrame(tick); };
+reads = TOPICS.map(() => 0); paint(); bars(); document.body.dataset.ready = "1";
 </script></body></html>

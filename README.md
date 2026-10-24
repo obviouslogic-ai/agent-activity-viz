@@ -26,7 +26,7 @@ python3 -m http.server 8000   # from the folder that holds this repo
 # open http://localhost:8000/agent-activity-viz/web/
 ```
 
-Toggle labels and trails, follow one agent, or pause.
+The page fits one screen. Press **Start the agents**: 20 simulated seconds of agents reading from data sources, with live read counts and a feed, then a summary. Press **Replay** for a new run. The explanation sits behind **About this demo** in the corner. Add `?fast=1` to skip the pauses.
 
 The page imports this repo's own JS module, so what you click is the same code the tests cover. Styling comes from `web/kit/`, shared across all five demos.
 
