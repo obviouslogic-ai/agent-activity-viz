@@ -8,19 +8,26 @@ canvas{display:block;width:100%;height:100%;object-fit:contain;object-position:l
 .bars div{display:grid;grid-template-columns:90px 1fr 34px;gap:8px;align-items:center;font:11px var(--mono);margin:5px 0}
 .bars b{display:block;height:4px;background:var(--fg);transition:width .3s;width:0}.bars .top b{background:var(--accent)}
 #feed{margin-top:14px}#feed div{font:11px/1.7 var(--mono);color:var(--dim);white-space:nowrap;overflow:hidden}#feed div:first-child{color:var(--fg)}
+
+.bars div{grid-template-columns:minmax(0,auto) minmax(0,1fr) 2.6em;font-size:.7em}.bars div span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#feed div{font-size:.7em;text-overflow:ellipsis}
+.work>div:last-child{display:flex;flex-direction:column}#feed{flex:1 1 0;min-height:0;overflow:hidden}
+@media (max-width:600px),(orientation:portrait){.work{grid-template-columns:1fr;grid-template-rows:minmax(0,1.2fr) minmax(0,1fr);gap:1.5vh}.bars{display:grid;grid-template-columns:1fr 1fr;column-gap:16px}.bars div{margin:2px 0}}
+@media (max-height:520px){.bars div{margin:1px 0}#feed{margin-top:4px}}
+
 </style></head><body class="stage">
 <main class="stage-main">
 <div><div class="tele" data-kit-tele></div><h1>If you can't see the agents work, you can't govern them</h1></div>
-<div class="work">
+<div class="work" data-fit>
  <div class="cvw"><div class="tele">SIMULATION / <b>T+<span id="stats">0</span></b></div><canvas id="c" width="1000" height="640"></canvas><div class="tele" id="legend"></div></div>
- <div><div class="tele">READS BY SOURCE / <b id="phase">IDLE</b></div><div class="bars" id="bars"></div><div class="tele" style="margin-top:14px">LIVE FEED</div><div id="feed"></div></div>
+ <div><div class="tele">READS BY SOURCE / <b id="phase">IDLE</b></div><div class="bars" id="bars"></div><div class="tele" style="margin-top:14px">LIVE FEED</div><div id="feed" data-clip-ok></div></div>
 </div>
 <div class="act"><button class="big" id="go">Start the agents</button><span class="verdict" id="out"></span></div>
 </main>
 <template id="info"><p>Palladium records what every agent reads and does, and I watch it as a live map: who is pulling from which source, by department, and where the load lands.</p><p>This page is a simulation of that view. Every agent, topic and number here is invented. One run lasts 20 simulated seconds.</p></template>
 <script type="module">
 import { createWorld, step, DEPARTMENTS, TOPICS } from "../sim.js";
-import { mount, setStatus } from "./kit/kit.js"; mount("agent-activity-viz", { status: "READY" });
+import { mount, setStatus, autoFit } from "./kit/kit.js"; mount("agent-activity-viz", { status: "READY" });
 const $ = id => document.getElementById(id), cv = $("c"), g = cv.getContext("2d"), FAST = new URLSearchParams(location.search).has("fast"), RUN = 20;
 $("legend").innerHTML = Object.entries(DEPARTMENTS).map(([d, c]) => `<span><i style="background:${c}"></i>${d.toUpperCase()}</span>`).join("");
 let w = createWorld(), reads, byDept, running = false, last;
@@ -38,7 +45,7 @@ function tick(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   for (let k = 0; k < (FAST ? 12 : 1); k++) { const before = w.agents.map(a => a.hops); step(w, FAST ? 0.05 : dt);
     w.agents.forEach((a, i) => { if (a.hops > before[i]) { reads[a.to]++; byDept[a.dept] = (byDept[a.dept] || 0) + 1;
-      const d = document.createElement("div"); d.textContent = `${w.time.toFixed(1)}s ${a.id} ${a.dept} → ${TOPICS[a.to]}`; $("feed").prepend(d); while ($("feed").children.length > 12) $("feed").lastChild.remove(); } }); }
+      const d = document.createElement("div"); d.textContent = `${w.time.toFixed(1)}s ${a.id} ${a.dept} → ${TOPICS[a.to]}`; $("feed").prepend(d); while ($("feed").children.length > 12 || ($("feed").children.length > 1 && $("feed").scrollHeight > $("feed").clientHeight + 1)) $("feed").lastChild.remove(); } }); }
   paint(); bars();
   if (w.time < RUN) return requestAnimationFrame(tick);
   const top = TOPICS[reads.indexOf(Math.max(...reads))], dept = Object.entries(byDept).sort((a, b) => b[1] - a[1])[0][0];
@@ -47,5 +54,5 @@ function tick(now) {
 }
 $("go").onclick = () => { if (running) return; running = true; w = createWorld({ seed: 7 + Math.floor(Math.random() * 1000) }); reads = TOPICS.map(() => 0); byDept = {};
   $("feed").innerHTML = ""; $("out").textContent = ""; delete document.body.dataset.done; $("go").disabled = true; setStatus("LIVE SIM"); $("phase").textContent = "RUNNING"; last = performance.now(); requestAnimationFrame(tick); };
-reads = TOPICS.map(() => 0); paint(); bars(); document.body.dataset.ready = "1";
+reads = TOPICS.map(() => 0); paint(); bars(); autoFit(); document.body.dataset.ready = "1";
 </script></body></html>
